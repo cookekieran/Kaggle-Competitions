@@ -1,47 +1,150 @@
-This folder contains my attempt at the titanic kaggle competition: https://www.kaggle.com/competitions/titanic. 
+# Titanic: Machine Learning from Disaster
 
-My work achieved a submission accuracy of 0.78468 (submission11).
 
-### Model Features
+This folder contains my solution for the Titanic Kaggle competition. By leveraging advanced feature engineering and ensemble methods, this notebook achieved a final standing of 1,624th out of 11,654 participants, placing in the top 14% at the time of writing. 
 
-The following table outlines the features used in the model, distinguishing between raw data extracted directly from the Titanic dataset and features that were engineered:
+---
 
-| Feature | Type | Description |
-| :--- | :--- | :--- |
-| **Sex** | Raw | Original gender column from the dataset. |
-| **Embarked** | Raw | Port of embarkation (C, Q, or S). |
-| **Pclass** | Raw | Ticket class (1, 2, or 3). |
-| **Fare** | Raw | The price paid for the ticket. |
-| **family_size_grouped** | Engineered | Created by combining `SibSp` and `Parch` and grouping them into categories. |
-| **title** | Engineered | Extracted from the `Name` column (e.g., Mr, Mrs, Miss, Master). |
-| **name_length** | Engineered | A numerical feature representing the character count of the passenger's name. |
-| **ticket_number_count** | Engineered | Created by counting how many passengers shared the same ticket number. |
-| **cabin_assigned** | Engineered | A binary feature (1/0) indicating whether a cabin number was recorded. |
+## Project Overview
 
-## Model Selection
+The goal is to build a predictive model that answers the question:
 
-Twelve different approaches using Scikit-Learn and XGBoost pipelines were evaluated for this project. This allowed for a comparison across various algorithms, ranging from simple probabilistic models to complex ensemble methods.
+**"What sorts of people were more likely to survive?"**
 
-| Model Variable | Algorithm | Category |
-| :--- | :--- | :--- |
-| `Y_pred` | **Random Forest** | Ensemble (Bagging) |
-| `Y_pred2` | **Decision Tree** | Tree-based |
-| `Y_pred3` | **K-Nearest Neighbors** | Instance-based |
-| `Y_pred4` | **Support Vector Classifier** | Kernel-based |
-| `Y_pred5` | **Logistic Regression** | Linear Model |
-| `Y_pred6` | **Gaussian Naive Bayes** | Probabilistic |
-| `Y_pred7` | **XGBoost** | Ensemble (Boosting) |
-| `Y_pred8` | **AdaBoost** | Ensemble (Boosting) |
-| `Y_pred9` | **Extra Trees** | Ensemble (Bagging) |
-| `Y_pred10` | **Gradient Boosting** | Ensemble (Boosting) |
-| `Y_pred11` | **Voting Ensemble 1** | Meta-Estimator |
-| `Y_pred12` | **Voting Ensemble 2** | Meta-Estimator |
+The model uses structured passenger data, including:
 
-The use of `pipelines` ensured that all preprocessing steps (scaling, encoding, and imputation) were applied identically to the test set for every model, preventing data leakage and ensuring reproducible results.
+- Name  
+- Age  
+- Gender  
+- Socio-economic class  
+- Ticket information  
+- Cabin data  
+- Family relationships  
 
-### Next steps
+---
 
-Currently, missing values are handled with SimpleImputer strategies, replacing null data with mode or median values. A more complex approach, such as using Iterative Imputer or KNN Imputer, could provide more realistic estimates for missing age and cabin data.
+## Data Insights
 
-Additionally, engineered features involves grouping. A more advanced feature engineering approach may uncover further relationships within the raw features. For example, interaction terms between Age and class or title and fare may better segment the passenger list. The Cabin feature is sparse, but the letter prefix indicates the deck and therefore the proximity to lifeboats, which is a factor not yet considered.
+Initial exploratory data analysis revealed several important patterns that guided feature engineering:
 
+**Survival Disparities**
+- Females had a survival rate of approximately **74%**
+- Males had a survival rate of approximately **19%**
+
+**Socio-Economic Impact**
+- 1st Class passengers: approximately **63% survival rate**
+- 3rd Class passengers: approximately **24% survival rate**
+
+**Missing Data**
+- Age: approximately **20% missing**
+- Cabin: approximately **77% missing**
+- Embarked: approximately **0.22% missing**
+
+---
+
+## Feature Engineering
+
+To improve predictive performance, several engineered features were introduced:
+
+### Family Size Grouping
+
+- Combined `SibSp` and `Parch` to create a `family_size` feature.
+- Grouped into:
+  - Alone  
+  - Small  
+  - Medium  
+  - Large  
+- "Small" families (2–4 members) showed the highest survival rates (approximately **58%**).
+
+### Title Extraction
+
+- Extracted titles (Mr, Miss, Mrs, etc.) from the `Name` field.
+- Rare titles were grouped into broader categories such as:
+  - Military  
+  - Noble  
+- These categories showed strong correlation with survival outcomes.
+
+### Ticket Analysis
+
+- Extracted ticket prefixes and ticket frequency counts.
+- Identified groups traveling together.
+- Higher ticket frequency often correlated with specific survival patterns.
+
+### Cabin Binary Mapping
+
+- Due to high missingness, `Cabin` was simplified into:
+  - `cabin_assigned = 1` if cabin was present  
+  - `cabin_assigned = 0` if missing  
+- Passengers with assigned cabins had a **66.7% survival rate**.
+
+---
+
+## Machine Learning Pipeline
+
+The project leverages **scikit-learn Pipelines** to ensure clean, reproducible preprocessing and modeling.
+
+### Preprocessing
+
+**Imputation**
+- Median imputation for `Age` and `Fare`
+- Most-frequent imputation for categorical variables
+
+**Encoding**
+- `OneHotEncoder` for nominal features:
+  - Sex  
+  - Title  
+  - Embarked  
+- `OrdinalEncoder` for grouped features:
+  - Family size categories  
+
+---
+
+## Models Evaluated
+
+- Random Forest Classifier  
+- Decision Tree Classifier  
+- XGBoost  
+- Support Vector Classifier (SVC)  
+- Voting Classifier (ensemble)  
+
+---
+
+## Next Steps
+
+
+### 1. Further Feature Engineering
+
+**Family Survival Rates**
+
+- Create a **Family Survival Group** feature, extracting surnames to identify family groupings.
+- Calculate whether other members of a passenger's family survived, which would serve as a strong predictive signal, as families often survived or perished together.
+
+**Deck Extraction**
+
+- Extract the deck letter (A, B, C, etc.) from the `Cabin` variable. Deck location acts as a proxy for proximity to lifeboats. Provides additional spatial context related to survival probability.
+
+---
+
+### 2. Model Stacking & Blending
+
+Instead of relying solely on a `VotingClassifier`, implement a **Stacked Generalization** approach:
+
+- Train base models:
+  - XGBoost  
+  - Random Forest  
+  - Support Vector Classifier (SVC)  
+
+- Generate out-of-fold predictions from each base model.
+- Train a **Meta-Learner** (e.g., Logistic Regression) on these predictions.
+- The meta-model learns optimal weighting of base model outputs for improved performance.
+
+---
+
+### 3. Handling Data Leakage
+
+Improve model robustness and evaluation reliability by:
+
+- Implementing **Repeated Stratified K-Fold Cross-Validation**
+- Ensuring strict separation between training and validation folds
+- Reducing variance in performance estimates
+- Minimizing the risk of data leakage
